@@ -1,0 +1,9 @@
+# Project name for Cloudflare Pages
+name = "deployment"
+
+# Specify the directory containing static files to upload
+pages_build_output_dir = ".vercel/output/static"
+
+# Required compatibility settings
+compatibility_date = "2023-09-04"
+compatibility_flags = ["nodejs_compat"]
