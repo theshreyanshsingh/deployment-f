@@ -1,5 +1,5 @@
+import { signIn } from "next-auth/react";
 import Navigation from "./components/Navigation";
-import Link from "next/link";
 
 export default function Home() {
   return (
@@ -18,12 +18,12 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center mb-16">
-          <Link
-            href="/login"
+          <button
+            onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
             className="px-8 py-3 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
           >
             Get Started
-          </Link>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
