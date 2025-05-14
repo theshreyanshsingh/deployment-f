@@ -1,9 +1,10 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import axios from "axios";
 
 interface Repository {
   id: number;
@@ -21,37 +22,34 @@ export default function Dashboard() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedRepo, setSelectedRepo] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [isDeploying, setIsDeploying] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    }
-
-    if (status === "authenticated" && session) {
-      fetchRepositories();
-    }
+    if (status === "unauthenticated") router.push("/login");
+    if (status === "authenticated" && session) fetchRepositories();
   }, [status, session, router]);
 
   const fetchRepositories = async () => {
     try {
-      // Get access token from session
       if (!session?.accessToken) {
         setError("No access token found. Please sign in again.");
         setLoading(false);
         return;
       }
-      // Using the GitHub API with the access token from the session
-      const response = await fetch("https://api.github.com/user/repos", {
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`,
-        },
-      });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch repositories");
-      }
+      const response = await fetch(
+        "https://api.github.com/user/repos?per_page=100",
+        {
+          headers: { Authorization: `Bearer ${session.accessToken}` },
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch repositories");
 
       const data = await response.json();
+
       setRepositories(data);
       setLoading(false);
     } catch (err) {
@@ -61,111 +59,208 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeploy = async () => {
+    if (!selectedRepo || !selectedCategory || !session || isDeploying) {
+      alert("Please select both a repository and a deployment type.");
+      return;
+    }
+
+    setIsDeploying(true);
+
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API}/project`,
+        {
+          repo: selectedRepo,
+          category: selectedCategory,
+          owner: session.username,
+          accessToken: session.accessToken,
+        },
+        {
+          headers: { Authorization: `Bearer ${session.accessToken}` },
+        }
+      );
+
+      setIsDeploying(false);
+    } catch (err) {
+      setError("Error deploying repository. Please try again.");
+      setIsDeploying(false);
+      console.error(err);
+    }
+    console.log(selectedRepo, selectedCategory, session.user?.email);
+
+    // Simulate deployment process
+
+    setIsDeploying(false);
+  };
+
   if (status === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-black">
-        <div className="animate-pulse text-xl font-semibold text-gray-800 dark:text-gray-200">
-          Loading...
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-black text-white">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-t-2 border-white"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black p-6">
-      <header className="mb-8 flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          GitHub Repositories
-        </h1>
+    <div className="min-h-screen bg-black text-white p-4">
+      <div className="flex justify-end p-4">
         {session?.user && (
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center">
             {session.user.image && (
               <Image
                 src={session.user.image}
                 alt="Profile"
-                width={40}
-                height={40}
-                className="rounded-full border border-gray-300 dark:border-gray-700"
+                width={30}
+                height={30}
+                className="rounded-full"
               />
             )}
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {session.user.name}
-            </span>
+            <span className="mx-2 text-sm">{session.user.name}</span>
+            <button
+              onClick={() => signOut()}
+              className="text-sm text-gray-400 hover:text-white"
+            >
+              Sign Out
+            </button>
           </div>
         )}
-      </header>
+      </div>
 
-      <main>
-        {loading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <div
-                key={i}
-                className="animate-pulse rounded-lg border border-gray-200 dark:border-gray-800 p-4"
-              >
-                <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
-                <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-700 rounded mb-6"></div>
-                <div className="h-3 w-1/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-              </div>
-            ))}
+      <div className="mx-auto max-w-2xl">
+        <h1 className="mb-8 text-center text-3xl font-bold">Nearzero deploy</h1>
+
+        {/* Section 1: What would you like to deploy? */}
+        <div className="mb-12">
+          <h2 className="mb-6 text-center text-xl font-medium">
+            What would you like to deploy?
+          </h2>
+
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => setSelectedCategory("Static Site")}
+              className={`${
+                selectedCategory === "Static Site"
+                  ? "border-white bg-white text-black"
+                  : "border-gray-700 bg-black text-white hover:border-white"
+              } border p-4 rounded-md text-center transition-colors`}
+            >
+              Static Site
+            </button>
+
+            <button
+              disabled
+              onClick={() => setSelectedCategory("Dynamic Site")}
+              className={`${
+                selectedCategory === "Dynamic Site"
+                  ? "border-white bg-white text-black"
+                  : "border-gray-700 bg-black text-white hover:border-white"
+              } border p-4 rounded-md text-center transition-colors relative`}
+            >
+              Dynamic Site
+              <span className="absolute top-0 right-0 transform translate-x-1 -translate-y-1 bg-white text-black text-xs px-1 rounded">
+                Coming Soon
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedCategory("Backend")}
+              className={`${
+                selectedCategory === "Backend"
+                  ? "border-white bg-white text-black"
+                  : "border-gray-700 bg-black text-white hover:border-white"
+              } border p-4 rounded-md text-center transition-colors`}
+            >
+              Backend
+            </button>
+
+            <button
+              disabled
+              onClick={() => setSelectedCategory("Services")}
+              className={`${
+                selectedCategory === "Services"
+                  ? "border-white bg-white text-black"
+                  : "border-gray-700 bg-black text-white hover:border-white"
+              } border p-4 rounded-md text-center transition-colors relative`}
+            >
+              Services
+              <span className="absolute top-0 right-0 transform translate-x-1 -translate-y-1 bg-white text-black text-xs px-1 rounded">
+                Coming Soon
+              </span>
+            </button>
           </div>
-        ) : error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20 p-4 text-red-600 dark:text-red-400">
-            {error}
-          </div>
-        ) : repositories.length === 0 ? (
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-400">
-              No repositories found.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {repositories.map((repo) => (
-              <a
-                key={repo.id}
-                href={repo.html_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group rounded-lg border border-gray-200 dark:border-gray-800 p-4 transition-all hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md"
-              >
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-gray-600 dark:group-hover:text-gray-300">
+        </div>
+
+        {/* Section 2: Repository List */}
+        <div className="mb-12">
+          <h2 className="mb-6 text-center text-xl font-medium">
+            Select Repository
+          </h2>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-white"></div>
+            </div>
+          ) : error ? (
+            <div className="p-4 text-red-400 text-center">{error}</div>
+          ) : repositories.length === 0 ? (
+            <div className="p-4 text-center text-gray-400">
+              No repositories found
+            </div>
+          ) : (
+            <select
+              value={selectedRepo}
+              onChange={(e) => {
+                setSelectedRepo(e.target.value);
+              }}
+              className="w-full p-4 border border-gray-700 bg-black rounded-md focus:outline-none focus:border-white"
+            >
+              <option value="">Select a repository</option>
+              {repositories.map((repo) => (
+                <option key={repo.id} value={repo.name}>
                   {repo.name}
-                </h2>
-                {repo.description && (
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                    {repo.description}
-                  </p>
-                )}
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    {repo.language && (
-                      <span className="text-xs text-gray-500 dark:text-gray-500">
-                        {repo.language}
-                      </span>
-                    )}
-                    <div className="flex items-center space-x-1">
-                      <svg
-                        className="h-4 w-4 text-yellow-500"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z" />
-                      </svg>
-                      <span className="text-xs text-gray-500 dark:text-gray-500">
-                        {repo.stargazers_count}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-500">
-                    {new Date(repo.updated_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </a>
-            ))}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <div className="mt-4">
+            <div className="flex items-center justify-center">
+              <span className="text-gray-400">or</span>
+            </div>
+
+            <div className="mt-4">
+              <input
+                type="text"
+                placeholder="Enter public repository URL"
+                className="w-full p-4 border border-gray-700 bg-black rounded-md focus:outline-none focus:border-white"
+              />
+            </div>
           </div>
-        )}
-      </main>
+        </div>
+
+        {/* Section 3: Deploy Button */}
+        <div className="text-center">
+          <button
+            onClick={handleDeploy}
+            disabled={!selectedRepo || !selectedCategory || isDeploying}
+            className={`w-full p-4 rounded-md font-bold ${
+              !selectedRepo || !selectedCategory || isDeploying
+                ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                : "bg-white text-black hover:bg-gray-200"
+            }`}
+          >
+            {isDeploying ? (
+              <div className="flex items-center justify-center">
+                <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-t-2 border-black mr-2"></div>
+                Deploying...
+              </div>
+            ) : (
+              "Deploy"
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

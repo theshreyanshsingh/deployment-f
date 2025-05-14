@@ -9,12 +9,8 @@ export default function Home() {
       <main className="pt-24 px-6 max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            GitHub Repository Viewer
+            Nearzero
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Sign in with your GitHub account to view and manage all your
-            repositories in one place.
-          </p>
         </div>
 
         <div className="flex justify-center mb-16">
