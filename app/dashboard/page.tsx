@@ -4,6 +4,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import axios from "axios";
 
 interface Repository {
   id: number;
@@ -155,23 +156,23 @@ export default function Dashboard() {
         {} as Record<string, string>
       );
 
-      console.log("Actual formatted variables:", formattedEnvVariables);
-
       // Uncomment this when ready to deploy
-      // const apiUrl = process.env.NEXT_PUBLIC_API || "https://dotcqkmhu1.execute-api.ap-south-1.amazonaws.com/api";
-      // await axios.post(
-      //   `${apiUrl}/project`,
-      //   {
-      //     repo: selectedRepo,
-      //     category: selectedCategory,
-      //     owner: session.username,
-      //     accessToken: session.accessToken,
-      //     envVariables: formattedEnvVariables,
-      //   },
-      //   {
-      //     headers: { Authorization: `Bearer ${session.accessToken}` },
-      //   }
-      // );
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API ||
+        "https://dotcqkmhu1.execute-api.ap-south-1.amazonaws.com/api";
+      await axios.post(
+        `${apiUrl}/project`,
+        {
+          repo: selectedRepo,
+          category: selectedCategory,
+          owner: session.username,
+          accessToken: session.accessToken,
+          envVariables: formattedEnvVariables,
+        },
+        {
+          headers: { Authorization: `Bearer ${session.accessToken}` },
+        }
+      );
 
       setIsDeploying(false);
     } catch (err) {
