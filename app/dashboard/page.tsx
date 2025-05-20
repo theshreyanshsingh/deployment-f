@@ -164,7 +164,7 @@ export default function Dashboard() {
         `${apiUrl}/project`,
         {
           repo: selectedRepo,
-          category: selectedCategory,
+          category: selectedCategory === "Static Site" ? "static" : "backend",
           owner: session.username,
           accessToken: session.accessToken,
           envVariables: formattedEnvVariables,
